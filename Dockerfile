@@ -1,2 +1,2 @@
-FROM golang:1.11
+FROM busybox
 COPY bin/goproxy /usr/bin/goproxy

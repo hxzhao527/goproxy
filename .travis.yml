@@ -8,9 +8,10 @@ env:
   global:
     - GO111MODULE=on
 install:
+  - go generate
   - go mod tidy
 script:
-  - go build -o bin/goproxy
+  - GOARCH=386 GOOS=linux go build -o bin/goproxy
 before_deploy:
   - docker build -t hxzhao527/goproxy:latest .
   - echo "$docker_password" | docker login -u "$docker_username" --password-stdin
@@ -19,3 +20,4 @@ deploy:
   script: docker push hxzhao527/goproxy:latest
   on:
     branch: master
+    tags: true
