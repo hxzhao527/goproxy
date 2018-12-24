@@ -3,6 +3,7 @@ package proxy
 import (
 	"fmt"
 	"github.com/goproxyio/goproxy/pkg/modfetch"
+	"github.com/goproxyio/goproxy/pkg/modfetch/codehost"
 	"github.com/goproxyio/goproxy/pkg/module"
 	"log"
 	"net/http"
@@ -13,10 +14,12 @@ import (
 )
 
 func NewProxy(cache string) http.Handler {
-	modfetch.PkgMod = path.Join(cache, "pkg", "mod")
-	cacheDir := path.Join(modfetch.PkgMod, "cache", "download")
+	modfetch.PkgMod = filepath.Join(cache, "pkg/mod")
+	codehost.WorkRoot = filepath.Join(modfetch.PkgMod, "cache/vcs")
+
+	cacheDir := filepath.Join(modfetch.PkgMod, "cache/download")
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("goproxy: %s download %s\n", r.RemoteAddr, r.URL.Path)
+		log.Printf("goproxy: %s access %s\n", r.RemoteAddr, r.URL.Path)
 		if _, err := os.Stat(filepath.Join(cacheDir, r.URL.Path)); err != nil {
 			suffix := path.Ext(r.URL.Path)
 			if suffix == ".info" || suffix == ".mod" || suffix == ".zip" {
@@ -39,7 +42,7 @@ func NewProxy(cache string) http.Handler {
 				}
 				// ignore the error, incorrect tag may be given
 				// forward to inner.ServeHTTP
-				_, _ = modfetch.Download(module.Version{Path: modPath, Version: version})
+				_ = downloadMod(modPath, version)
 			}
 
 			// fetch latest version
@@ -51,7 +54,7 @@ func NewProxy(cache string) http.Handler {
 					ReturnServerError(w, err)
 					return
 				}
-				_, _ = modfetch.Download(module.Version{Path: modPath, Version: "latest"})
+				_ = downloadMod(modPath, "latest")
 			}
 
 			if strings.HasSuffix(r.URL.Path, "/@v/list") {
@@ -62,4 +65,26 @@ func NewProxy(cache string) http.Handler {
 		}
 		http.FileServer(http.Dir(cacheDir)).ServeHTTP(w, r)
 	})
+}
+
+func downloadMod(modPath, version string) error {
+	if _, err := modfetch.InfoFile(modPath, version); err != nil {
+		return err
+	}
+	if _, err := modfetch.GoModFile(modPath, version); err != nil {
+		return err
+	}
+	if _, err := modfetch.GoModSum(modPath, version); err != nil {
+		return err
+	}
+	mod := module.Version{Path: modPath, Version: version}
+	if _, err := modfetch.DownloadZip(mod); err != nil {
+		return err
+	}
+	if a, err := modfetch.Download(mod); err != nil {
+		return err
+	} else {
+		log.Printf("goproxy: download %s@%s to dir %s\n", modPath, version, a)
+	}
+	return nil
 }
