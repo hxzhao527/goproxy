@@ -13,11 +13,11 @@ install:
 script:
   - GOARCH=386 GOOS=linux go build -o bin/goproxy
 before_deploy:
-  - docker build -t hxzhao527/goproxy:latest .
+  - docker build -t hxzhao527/goproxy:${TRAVIS_TAG:latest} .
   - echo "$docker_password" | docker login -u "$docker_username" --password-stdin
 deploy:
   provider: script
-  script: docker push hxzhao527/goproxy:latest
+  script: docker push hxzhao527/goproxy:${TRAVIS_TAG:latest}
   on:
     branch: master
     tags: true
