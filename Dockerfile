@@ -1,8 +1,5 @@
-FROM golang:1.11
-
-COPY ./ /goproxy
-WORKDIR /goproxy
-RUN go build
-
-CMD ["/goproxy/goproxy","-listen=0.0.0.0:8080"]
+FROM busybox
+ENV PORT 8080
+CMD ["goproxy","-listen=0.0.0.0:${PORT}"]
+COPY bin/goproxy /usr/bin/goproxy
 
