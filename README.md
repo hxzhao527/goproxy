@@ -23,4 +23,6 @@ Use the -v flag to persisting the proxy module data (change ___go_repo___ to you
 
     docker-compose up
 
-
+## Extra
+1. If you want chain your proxy, you can set `$GOPROXY` to other proxy instance.
+2. Don't set `$GOPROXY` to `off`, otherwise proxy will not work

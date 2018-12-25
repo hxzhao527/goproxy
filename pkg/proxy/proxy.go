@@ -47,7 +47,9 @@ func NewProxy(cache string) http.Handler {
 				}
 				// ignore the error, incorrect tag may be given
 				// forward to inner.ServeHTTP
-				_ = downloadMod(modPath, version)
+				if err := downloadMod(modPath, version); err != nil {
+					errLogger.Printf("download get err %s", err)
+				}
 			}
 
 			// fetch latest version
@@ -59,7 +61,9 @@ func NewProxy(cache string) http.Handler {
 					ReturnServerError(w, err)
 					return
 				}
-				_ = downloadMod(modPath, "latest")
+				if err := downloadMod(modPath, "latest"); err != nil {
+					errLogger.Printf("download get err %s", err)
+				}
 			}
 
 			if strings.HasSuffix(r.URL.Path, "/@v/list") {

@@ -30,7 +30,7 @@ func main() {
 	// sigs := make(chan os.Signal)
 	// signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	log.Printf("goproxy: %s inited.\n", time.Now().Format("2006-01-02 15:04:05"))
+	log.Printf("goproxy: %s inited. listen on %s\n", time.Now().Format("2006-01-02 15:04:05"), listen)
 
 	cacheDir := filepath.Join(root, "pkg", "mod", "cache", "download")
 	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
