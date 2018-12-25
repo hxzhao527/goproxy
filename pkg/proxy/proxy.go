@@ -13,11 +13,16 @@ import (
 	"strings"
 )
 
+var cacheDir string
+var innerHandle http.Handler
+
 func NewProxy(cache string) http.Handler {
 	modfetch.PkgMod = filepath.Join(cache, "pkg/mod")
 	codehost.WorkRoot = filepath.Join(modfetch.PkgMod, "cache/vcs")
 
-	cacheDir := filepath.Join(modfetch.PkgMod, "cache/download")
+	cacheDir = filepath.Join(modfetch.PkgMod, "cache/download")
+	innerHandle = http.FileServer(http.Dir(cacheDir))
+
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		log.Printf("goproxy: %s access %s\n", r.RemoteAddr, r.URL.Path)
 		if _, err := os.Stat(filepath.Join(cacheDir, r.URL.Path)); err != nil {
@@ -63,7 +68,7 @@ func NewProxy(cache string) http.Handler {
 				return
 			}
 		}
-		http.FileServer(http.Dir(cacheDir)).ServeHTTP(w, r)
+		innerHandle.ServeHTTP(w, r)
 	})
 }
 
