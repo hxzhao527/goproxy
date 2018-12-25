@@ -1,5 +1,5 @@
 
-# GOPROXY [![CircleCI](https://circleci.com/gh/goproxyio/goproxy.svg?style=svg)](https://circleci.com/gh/goproxyio/goproxy)
+# GOPROXY [![Build Status](https://travis-ci.org/hxzhao527/goproxy.svg?branch=master)](https://travis-ci.org/hxzhao527/goproxy)
 
 A global proxy for go modules. see: [https://goproxy.io](https://goproxy.io)
 
