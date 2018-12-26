@@ -9,7 +9,7 @@ A global proxy for go modules. see: [https://goproxy.io](https://goproxy.io)
 
 ## Started
     
-    ./goproxy -listen=0.0.0.0:80 -root=/go
+    ./goproxy -listen=0.0.0.0:80 -cacheDir=/go
 
 ## Docker
 
@@ -24,5 +24,4 @@ Use the -v flag to persisting the proxy module data (change ___go_repo___ to you
     docker-compose up
 
 ## Extra
-1. If you want chain your proxy, you can set `$GOPROXY` to other proxy instance.
-2. Don't set `$GOPROXY` to `off`, otherwise proxy will not work
+1. set $GOPROXY to change your proxy or disable the proxy
