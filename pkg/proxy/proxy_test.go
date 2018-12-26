@@ -69,3 +69,31 @@ func TestDownload(t *testing.T) {
 	}
 	t.Logf("%s@%s modsum on %s", packagePath, version, info)
 }
+
+func TestLatest(t *testing.T) {
+	packagePath := "golang.org/x/net"
+	version := "latest"
+	repo, err := modfetch.Lookup(packagePath)
+	if err != nil {
+		t.Errorf("lookup %s get error %s", packagePath, err)
+	}
+	info, err := repo.Latest()
+	if err != nil {
+		t.Errorf("fetch %s@%s info get error %s", packagePath, version, err)
+	}
+	t.Logf("%s@%s info is %s", packagePath, version, info)
+}
+
+func TestList(t *testing.T) {
+	packagePath := "golang.org/x/net"
+	version := "latest"
+	repo, err := modfetch.Lookup(packagePath)
+	if err != nil {
+		t.Errorf("lookup %s get error %s", packagePath, err)
+	}
+	info, err := repo.Versions("")
+	if err != nil {
+		t.Errorf("fetch %s@%s versions get error %s", packagePath, version, err)
+	}
+	t.Logf("%s@%s versions are %s", packagePath, version, info)
+}

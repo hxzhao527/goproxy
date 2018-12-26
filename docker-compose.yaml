@@ -1,10 +1,10 @@
 version: "2"
 services:
   goproxy:
-    image: hxzhao527/goproxy
-    command: "goproxy -listen=0.0.0.0:8080 -root=/go"
+    image: goproxy/goproxy:latest
+    command: "goproxy -listen=0.0.0.0:8081 -cacheDir=/ext"
     ports:
-    - "80:8080"
+    - "8081:8081"
     restart: always
     volumes:
-      - ./go_repos:/go
+      - ./go_repos:/ext

@@ -1,79 +1,116 @@
 package proxy
 
 import (
+	"encoding/json"
 	"fmt"
-	"github.com/goproxyio/goproxy/pkg/modfetch"
-	"github.com/goproxyio/goproxy/pkg/modfetch/codehost"
-	"github.com/goproxyio/goproxy/pkg/module"
 	"log"
 	"net/http"
 	"os"
 	"path"
 	"path/filepath"
 	"strings"
+
+	"github.com/goproxyio/goproxy/pkg/modfetch"
+	"github.com/goproxyio/goproxy/pkg/modfetch/codehost"
+	"github.com/goproxyio/goproxy/pkg/module"
 )
 
 var cacheDir string
 var innerHandle http.Handler
 
-func NewProxy(cache string) http.Handler {
-	modfetch.PkgMod = filepath.Join(cache, "pkg/mod")
-	codehost.WorkRoot = filepath.Join(modfetch.PkgMod, "cache/vcs")
+type modInfo struct {
+	module.Version
+	suf string
+}
 
-	cacheDir = filepath.Join(modfetch.PkgMod, "cache/download")
+func NewProxy(cache string) http.Handler {
+	modfetch.PkgMod = filepath.Join(cache, "pkg", "mod")
+	codehost.WorkRoot = filepath.Join(modfetch.PkgMod, "cache", "vcs")
+
+	cacheDir = filepath.Join(modfetch.PkgMod, "cache", "download")
 	innerHandle = http.FileServer(http.Dir(cacheDir))
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		log.Printf("goproxy: %s access %s\n", r.RemoteAddr, r.URL.Path)
+		log.Printf("goproxy: %s request %s\n", r.RemoteAddr, r.URL.Path)
 		if _, err := os.Stat(filepath.Join(cacheDir, r.URL.Path)); err != nil {
-			suffix := path.Ext(r.URL.Path)
-			if suffix == ".info" || suffix == ".mod" || suffix == ".zip" {
-				mod := strings.Split(r.URL.Path, "/@v/")
-				if len(mod) != 2 {
-					ReturnBadRequest(w, fmt.Errorf("bad module path:%s", r.URL.Path))
-					return
-				}
-				version := strings.TrimSuffix(mod[1], suffix)
-				version, err = module.DecodeVersion(version)
-				if err != nil {
-					ReturnServerError(w, err)
-					return
-				}
-				modPath := strings.TrimPrefix(mod[0], "/")
-				modPath, err := module.DecodePath(modPath)
-				if err != nil {
-					ReturnServerError(w, err)
-					return
-				}
+			info, err := parseModInfoFromUrl(r.URL.Path)
+			if err != nil {
+				ReturnBadRequest(w, err)
+				return
+			}
+			switch suf := info.suf; suf {
+			case "":
 				// ignore the error, incorrect tag may be given
 				// forward to inner.ServeHTTP
-				if err := downloadMod(modPath, version); err != nil {
-					errLogger.Printf("download get err %s", err)
+				if err := downloadMod(info.Path, info.Version.Version); err != nil {
+					errLogger.Printf("goproxy: download %s@%s get err %s", info.Path, info.Version.Version, err)
 				}
-			}
-
-			// fetch latest version
-			if strings.HasSuffix(r.URL.Path, "/@latest") {
-				modPath := strings.TrimSuffix(r.URL.Path, "/@latest")
-				modPath = strings.TrimPrefix(modPath, "/")
-				modPath, err := module.DecodePath(modPath)
+			case "/@v/list", "/@latest":
+				repo, err := modfetch.Lookup(info.Path)
 				if err != nil {
-					ReturnServerError(w, err)
+					errLogger.Printf("goproxy: lookup failed: %v", err)
+					ReturnInternalServerError(w, err)
 					return
 				}
-				if err := downloadMod(modPath, "latest"); err != nil {
-					errLogger.Printf("download get err %s", err)
+				switch suf {
+				case "/@v/list":
+					info, err := repo.Versions("")
+					if err != nil {
+						ReturnInternalServerError(w, err)
+						return
+					}
+					data := strings.Join(info, "\n")
+					ReturnSuccess(w, []byte(data))
+					return
+				case "/@latest":
+					info, err := repo.Latest()
+					if err != nil {
+						ReturnInternalServerError(w, err)
+						return
+					}
+					data, err := json.Marshal(info)
+					if err != nil {
+						// ignore
+						errLogger.Printf("goproxy:  marshal mod version info get error: %s", err)
+					}
+					ReturnSuccess(w, data)
+					return
 				}
-			}
-
-			if strings.HasSuffix(r.URL.Path, "/@v/list") {
-				// TODO
-				_, _ = w.Write([]byte(""))
-				return
 			}
 		}
 		innerHandle.ServeHTTP(w, r)
 	})
+}
+
+func parseModInfoFromUrl(url string) (*modInfo, error) {
+
+	var modPath, modVersion, suf string
+	switch {
+	case strings.HasSuffix(url, "/@v/list"):
+		// /golang.org/x/net/@v/list
+		suf = "/@v/list"
+		modVersion = ""
+		modPath = strings.Trim(strings.TrimSuffix(url, suf), "/")
+	case strings.HasSuffix(url, "/@latest"):
+		// /golang.org/x/@latest
+		suf = "/@latest"
+		modVersion = "latest"
+		modPath = strings.Trim(strings.TrimSuffix(url, suf), "/")
+	case strings.HasSuffix(url, ".info"), strings.HasSuffix(url, ".mod"), strings.HasSuffix(url, ".zip"):
+		// /golang.org/x/net/@v/v0.0.0-20181220203305-927f97764cc3.info
+		// /golang.org/x/net/@v/v0.0.0-20181220203305-927f97764cc3.mod
+		// /golang.org/x/net/@v/v0.0.0-20181220203305-927f97764cc3.zip
+		ext := path.Ext(url)
+		tmp := strings.Split(url, "/@v/")
+		if len(tmp) != 2 {
+			return nil, fmt.Errorf("bad module path:%s", url)
+		}
+		modVersion = strings.TrimSuffix(tmp[1], ext)
+		modPath = strings.Trim(tmp[0], "/")
+	default:
+		return nil, fmt.Errorf("bad module path:%s", url)
+	}
+	return &modInfo{module.Version{Path: modPath, Version: modVersion}, suf}, nil
 }
 
 func downloadMod(modPath, version string) error {
