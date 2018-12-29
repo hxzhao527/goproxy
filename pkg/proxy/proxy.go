@@ -24,6 +24,7 @@ type modInfo struct {
 }
 
 func NewProxy(cache string) http.Handler {
+	modfetch.QuietLookup = true
 	modfetch.PkgMod = filepath.Join(cache, "pkg", "mod")
 	codehost.WorkRoot = filepath.Join(modfetch.PkgMod, "cache", "vcs")
 
