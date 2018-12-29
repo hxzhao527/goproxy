@@ -11,7 +11,7 @@ install:
   - go generate
   - go mod tidy
 script:
-  - go test `(go list ./... | grep "pkg/proxy")`
+  - go test -v `(go list ./... | grep "pkg/proxy")`
   - GOARCH=386 GOOS=linux go build -o bin/goproxy
 before_deploy:
   - docker build --no-cache -t hxzhao527/goproxy:${TRAVIS_TAG:latest} .
@@ -23,3 +23,5 @@ deploy:
   on:
     branch: master
     tags: true
+notifications:
+  email: false
