@@ -24,4 +24,7 @@ Use the -v flag to persisting the proxy module data (change ___go_repo___ to you
     docker-compose up
 
 ## Extra
-1. set $GOPROXY to change your proxy or disable the proxy
+1. set $GOPROXY to chain your proxy or disable the proxy
+
+## TODO
+1. abstract `download` allow private/inner download
